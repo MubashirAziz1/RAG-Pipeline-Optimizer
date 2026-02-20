@@ -1,10 +1,7 @@
 import logging
 from pathlib import Path
-from typing import Optional
 
 from src.exceptions import PDFParsingException, PDFValidationError
-from src.schemas.pdf_parser.models import PdfContent
-
 from .docling import DoclingParser
 
 logger = logging.getLogger(__name__)
@@ -18,10 +15,10 @@ class PDFParserService:
             max_pages=max_pages, max_file_size_mb=max_file_size_mb, do_ocr=do_ocr, do_table_structure=do_table_structure
         )
 
-    def parse_pdf(self, pdf_path: Path) -> Optional[PdfContent]:
+    async def parse_pdf(self, pdf_path: Path) -> str:
         """Parse PDF using Docling parser only.
 
-        pdf_path: Path to PDF file
+        :pdf_path: Path to PDF file
         """
         if not pdf_path.exists():
             logger.error(f"PDF file not found: {pdf_path}")

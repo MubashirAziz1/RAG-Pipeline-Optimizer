@@ -6,8 +6,7 @@ import pypdfium2 as pdfium
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
-from src.exceptions import PDFParsingException, PDFValidationError
-from src.schemas.pdf_parser.models import PaperFigure, PaperSection, PaperTable, ParserType, PdfContent
+from src.exceptions import PDFValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -84,12 +83,12 @@ class DoclingParser:
             logger.error(f"Error validating PDF {pdf_path}: {e}")
             raise PDFValidationError(f"Error validating PDF {pdf_path}: {e}")
 
-    async def parse_pdf(self, pdf_path: Path) -> Optional[PdfContent]:
+    async def parse_pdf(self, pdf_path: Path) -> str:
         """Parse PDF using Docling parser.
         Limited to 20 pages to avoid memory issues with large papers.
 
         :param pdf_path: Path to PDF file
-        :returns: PdfContent object or None if parsing failed
+        :returns: Text from sections of PDF
         """
         try:
 
@@ -101,34 +100,10 @@ class DoclingParser:
             # Extract structured content
             doc = result.document
 
-            # Extract sections from document structure
-            sections = []
-            current_section = {"title": "Content", "content": ""}
-
-            for element in doc.texts:
-                if hasattr(element, "label") and element.label in ["title", "section_header"]:
-                    # Save previous section if it has content
-                    if current_section["content"].strip():
-                        sections.append(PaperSection(title=current_section["title"], content=current_section["content"].strip()))
-                    # Start new section
-                    current_section = {"title": element.text.strip(), "content": ""}
-                else:
-                    # Add content to current section
-                    if hasattr(element, "text") and element.text:
-                        current_section["content"] += element.text + "\n"
-
-            # Add final section
-            if current_section["content"].strip():
-                sections.append(PaperSection(title=current_section["title"], content=current_section["content"].strip()))
-
-            # Structured full text content only
-            return PdfContent(
-                sections=sections,
-                raw_text=doc.export_to_text(),
-                parser_used=ParserType.DOCLING,
-                metadata={"source": "docling", "note": "Content extracted from PDF."}
-            )
-
+            # Direct markdown export
+            section_text = doc.export_to_markdown()
+            return section_text
+             
         except PDFValidationError as e:
             error_msg = str(e).lower()
             if "too large" in error_msg or "too many pages" in error_msg:
@@ -136,6 +111,7 @@ class DoclingParser:
                 return None
             else:
                 raise
+
         except Exception as e:
             logger.error(f"Failed to parse PDF with Docling: {e}")
             logger.error(f"PDF path: {pdf_path}")
