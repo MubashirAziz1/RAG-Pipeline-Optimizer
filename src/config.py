@@ -55,8 +55,11 @@ class Settings(BaseConfigSettings):
     environment: Literal["development", "staging", "production"] = "development"
     service_name: str = "rag-pipeline-optimizer"
 
+    cohere_api_key: str = ""
+    
     pdf_parser: PDFParserSettings = Field(default_factory=PDFParserSettings)
     chunking: ChunkingSettings = Field(default_factory=ChunkingSettings)
+    
 
 
 def get_settings() -> Settings:

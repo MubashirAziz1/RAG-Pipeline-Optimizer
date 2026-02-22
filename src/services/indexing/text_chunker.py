@@ -26,9 +26,7 @@ class TextChunker:
                     separators=["\n\n", "\n", ". ", " ", ""]
         )
 
-        logger.info(
-            f"Text chunker initialized: chunk_size={chunk_size}, overlap_size={chunk_overlap}. "
-        )
+        logger.info(f"Text chunker initialized: chunk_size={chunk_size}, overlap_size={chunk_overlap}. ")
         
         
     def chunk_text(self, text: str) -> List[str]:
@@ -38,14 +36,9 @@ class TextChunker:
         :text: Extracted text to split
         """
 
-        logger.info(
-            f"Chunking text ........ "
-        )
+        logger.info(f"Chunking text ........ ")
         
         chunks = self.text_splitter.split_text(text)
         
-        logger.info(
-            f"Created {len(chunks)} chunks"
-        )
-        
+        logger.info(f"Created {len(chunks)} chunks")
         return chunks

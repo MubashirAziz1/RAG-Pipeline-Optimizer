@@ -1,0 +1,8 @@
+[33mbedc764[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m .env file is added to gitignore.
+[33me6b3aee[m .env file is added to the gitignore.
+[33mc613774[m api_key is removed from config.
+[33m0ec88c0[m Cohere embedding client is initialized.
+[33m5f1f21d[m[33m ([m[1;31morigin/main[m[33m)[m text chunker is defined
+[33m883a865[m simplify the docling parsing logic
+[33m282fc7e[m Parsing services using docling is defined and updated.
+[33mb47791a[m Added the uv created files
