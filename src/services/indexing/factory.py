@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import Optional
 from src.config import Settings, get_settings
 from .embedding import CohereEmbeddingsClient
 from .embedding import BertEmbeddingsClient

@@ -1,6 +1,6 @@
 import chromadb
 from chromadb.config import Settings
-from typing import List, Dict, Optional, Literal
+from typing import List, Dict
 import logging
 from pathlib import Path
 
@@ -8,16 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 class ChromadbStore:
-    """
-    ChromaDB store that manages multiple collections for different RAG pipelines.
-    
-    """
+    """ ChromaDB store that manages multiple collections for different RAG pipelines. """
     
     def __init__(self, persist_directory: str = "./chromadb_data"):
         """
         Initialize ChromaDB client with persistent storage.
-        
-        :param persist_directory: Directory to persist ChromaDB data
+
         """
         self.persist_directory = Path(persist_directory)
         self.persist_directory.mkdir(parents=True, exist_ok=True)
