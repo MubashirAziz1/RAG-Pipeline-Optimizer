@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import List, Literal, Optional
 
-from pydantic import Field, field_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -33,32 +33,16 @@ class PDFParserSettings(BaseConfigSettings):
     do_table_structure: bool = True
 
 
-class ChunkingSettings(BaseConfigSettings):
-    model_config = SettingsConfigDict(
-        env_file=[".env", str(ENV_FILE_PATH)],
-        env_prefix="CHUNKING__",
-        extra="ignore",
-        frozen=True,
-        case_sensitive=False,
-    )
-
-    chunk_size: int = 600  # Target words per chunk
-    overlap_size: int = 100  # Words to overlap between chunks
-    min_chunk_size: int = 100  # Minimum words for a valid chunk
-    section_based: bool = True  # Use section-based chunking when available
-
-
-
 class Settings(BaseConfigSettings):
     app_version: str = "0.1.0"
     debug: bool = True
     environment: Literal["development", "staging", "production"] = "development"
     service_name: str = "rag-pipeline-optimizer"
 
-    cohere_api_key: str = ""
+    cohere_api_key: str = "GwB6wIpzZ1DK1kXOxrpHIp41OKRQoE6ZkTHPSxF7"
     
     pdf_parser: PDFParserSettings = Field(default_factory=PDFParserSettings)
-    chunking: ChunkingSettings = Field(default_factory=ChunkingSettings)
+
     
 
 

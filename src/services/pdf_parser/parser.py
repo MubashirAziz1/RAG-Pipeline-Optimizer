@@ -15,7 +15,7 @@ class PDFParserService:
             max_pages=max_pages, max_file_size_mb=max_file_size_mb, do_ocr=do_ocr, do_table_structure=do_table_structure
         )
 
-    async def parse_pdf(self, pdf_path: Path) -> str:
+    def parse_pdf(self, pdf_path: Path) -> str:
         """Parse PDF using Docling parser only.
 
         :pdf_path: Path to PDF file
@@ -25,7 +25,7 @@ class PDFParserService:
             raise PDFValidationError(f"PDF file not found: {pdf_path}")
 
         try:
-            result = await self.docling_parser.parse_pdf(pdf_path)
+            result =  self.docling_parser.parse_pdf(pdf_path)
             if result:
                 logger.info(f"Parsed {pdf_path.name}")
                 return result

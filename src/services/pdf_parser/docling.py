@@ -83,7 +83,7 @@ class DoclingParser:
             logger.error(f"Error validating PDF {pdf_path}: {e}")
             raise PDFValidationError(f"Error validating PDF {pdf_path}: {e}")
 
-    async def parse_pdf(self, pdf_path: Path) -> str:
+    def parse_pdf(self, pdf_path: Path) -> str:
         """Parse PDF using Docling parser.
         Limited to 20 pages to avoid memory issues with large papers.
 
