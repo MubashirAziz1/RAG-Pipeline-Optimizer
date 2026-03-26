@@ -5,6 +5,7 @@ from src.services.pdf_parser.factory  import make_pdf_parser_service
 from src.services.indexing.text_chunker import TextChunker
 from src.services.indexing.factory import make_cohere_embeddings_service
 from src.services.vector_store.factory import make_chromadb_service
+from src.rag.ingestion_pipeline.ingestion import IngestionPipeline
 
 from pathlib import Path
 
@@ -75,72 +76,48 @@ def prompt_for_pdf() -> Path:
 #         print("   ⚠️  Query cannot be empty. Please try again.")
 
 
-# ── Main pipeline ──────────────────────────────────────────────────────────────
-def run_pipeline(pdf_path: str) -> None:
-
-    # ── 1. Parse PDF ───────────────────────────────────────────────────────────
-    print("\n[1/4] 📖  Parsing PDF...")
-    parser = make_pdf_parser_service()
-    raw_text = parser.parse_pdf(pdf_path)
-    print(f"      ✅  Extracted {len(raw_text):,} characters from '{os.path.basename(pdf_path)}'")
-
-    # ── 2. Chunk Text ──────────────────────────────────────────────────────────
-    print("\n[2/4] ✂️   Chunking text...")
-    chunker = TextChunker()
-    chunks = chunker.chunk_text(raw_text)
-    print(f"      ✅  Created {len(chunks)} chunks ")
-
-    # ── 3. Embed Chunks ────────────────────────────────────────────────────────
-    print("\n[3/4] 🧠  Generating Cohere embeddings...")
-    embedder = make_cohere_embeddings_service()
-    embeddings = embedder.embed_passage(chunks)          # returns list[list[float]]
-    print(f"      ✅  Generated {len(embeddings)} embeddings  "
-          f"(dim={len(embeddings[0])})")
-
-    # ── 4. Store in ChromaDB ───────────────────────────────────────────────────
-    print("\n[4/4] 🗄️   Storing in ChromaDB...")
-    chroma = make_chromadb_service()
-    chroma.store(
-        documents=chunks,
-        embeddings=embeddings,
-        ids=[f"chunk_{i}" for i in range(len(chunks))],
-    )
-    print(f"      ✅  Upserted {len(chunks)} documents into "
-          f"collection '{'rag_document'}'")
-
-    # # ── Query / Retrieval ──────────────────────────────────────────────────────
-    # print("\n" + "─" * 60)
-    # print(f"🔎  Running query: \"{query}\"")
-    # print("─" * 60)
-
-    # query_embedding = embedder.embed([query])[0]     # embed the user query
-    # results = chroma.query(
-    #     query_embeddings=[query_embedding],
-    #     n_results=3,                                 # top-3 relevant chunks
-    # )
-
-    # print("\n📌  Top relevant chunks:\n")
-    # documents = results.get("documents", [[]])[0]
-    # distances = results.get("distances", [[]])[0]
-
-    # if not documents:
-    #     print("   No results found.")
-    # else:
-    #     for rank, (doc, dist) in enumerate(zip(documents, distances), start=1):
-    #         print(f"  [{rank}] (distance: {dist:.4f})")
-    #         print(f"       {doc[:300].strip()}{'...' if len(doc) > 300 else ''}")
-    #         print()
 
 
-# ── Entry point ────────────────────────────────────────────────────────────────
+#     # # ── Query / Retrieval ──────────────────────────────────────────────────────
+#     # print("\n" + "─" * 60)
+#     # print(f"🔎  Running query: \"{query}\"")
+#     # print("─" * 60)
+
+#     # query_embedding = embedder.embed([query])[0]     # embed the user query
+#     # results = chroma.query(
+#     #     query_embeddings=[query_embedding],
+#     #     n_results=3,                                 # top-3 relevant chunks
+#     # )
+
+#     # print("\n📌  Top relevant chunks:\n")
+#     # documents = results.get("documents", [[]])[0]
+#     # distances = results.get("distances", [[]])[0]
+
+#     # if not documents:
+#     #     print("   No results found.")
+#     # else:
+#     #     for rank, (doc, dist) in enumerate(zip(documents, distances), start=1):
+#     #         print(f"  [{rank}] (distance: {dist:.4f})")
+#     #         print(f"       {doc[:300].strip()}{'...' if len(doc) > 300 else ''}")
+#     #         print()
+
+
+# # ── Entry point ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 60)
     print("       RAG Pipeline — PDF Upload & Query")
     print("=" * 60)
 
     try:
+        chroma_client = make_chromadb_service()
+        pipeline = chroma_client.create_collection('Pipeline_A')
         pdf_path = prompt_for_pdf()
-        run_pipeline(pdf_path)
+        parser = make_pdf_parser_service()
+        raw_text = parser.parse_pdf(pdf_path)
+
+        ingest_docs = IngestionPipeline(TextChunker(), make_cohere_embeddings_service(), chroma_client, name='Pipeline_A')
+        ingest_docs.ingest(raw_text)
+
 
     except KeyboardInterrupt:
         print("\n\n👋  Interrupted by user. Exiting.")

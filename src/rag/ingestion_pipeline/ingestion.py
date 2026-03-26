@@ -1,6 +1,3 @@
-import os
-import sys
-
 from src.services.pdf_parser.factory  import make_pdf_parser_service
 from src.services.indexing.text_chunker import TextChunker
 from src.services.indexing.factory import make_cohere_embeddings_service
@@ -10,137 +7,32 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-PDF_FOLDER = PROJECT_ROOT / "data"  
 
-
-# Only for local development
-def prompt_for_pdf() -> Path:
-    """
-    Lists every .pdf inside <project_root>/data/ and lets the user pick
-    one by number.  Falls back to manual path entry if folder is empty.
-    """
-
-    PDF_FOLDER.mkdir(parents=True, exist_ok=True)   # create data/ if missing
-
-    pdf_files = sorted(PDF_FOLDER.glob("*.pdf"))
-
-    if pdf_files:
-        print(f"\n📁  PDFs found in '{PDF_FOLDER}':\n")
-        for i, f in enumerate(pdf_files, start=1):
-            size_kb = f.stat().st_size / 1024
-            print(f"   [{i}] {f.name}  ({size_kb:.1f} KB)")
-        print(f"   [0] Enter a custom path instead")
-
-        while True:
-            choice = input("\n   Select a file number: ").strip()
-            if choice == "0":
-                break                               # fall through to manual entry
-            if choice.isdigit() and 1 <= int(choice) <= len(pdf_files):
-                selected = pdf_files[int(choice) - 1].resolve()
-                print(f"      ✅  Selected: {selected.name}")
-                return selected
-            print(f"   ⚠️  Please enter a number between 0 and {len(pdf_files)}.")
-    else:
-        print(f"\n   ℹ️  No PDFs found in '{PDF_FOLDER}'.")
-        print(f"      Drop your PDF files there, or enter a path manually below.")
-
-    # ── Manual fallback ────────────────────────────────────────────────────────
-    while True:
-        raw = input("\n📄  Enter the full path to your PDF: ").strip().strip('"').strip("'")
-
-        if not raw:
-            print("   ⚠️  No path entered. Please try again.")
-            continue
-
-        pdf_path = Path(raw).resolve()
-
-        if pdf_path.suffix.lower() != ".pdf":
-            print("   ⚠️  File must be a .pdf — please try again.")
-            continue
-
-        if not pdf_path.exists():
-            print(f"   ⚠️  File not found: '{pdf_path}' — please try again.")
-            continue
-
-        return pdf_path
 
 class IngestionPipeline():
 
-    def __init__(self, parser, embedder, vector_store):
-        self.parser = parser
+    def __init__(self, chunker, embedder, vector_store, name : str):
+
+        self.chunker = chunker
         self.embedder = embedder
         self.vector_store = vector_store
+        self.name = name
+    
+    def ingest(self, raw_text: str):
+        print(f"\n🚀 {self.name} begins ........")
 
-def ingestion_pipeline(pdf_path: str) -> None:
+        chunks = self.chunker.chunk_text(raw_text)
+        embeddings = self.embedder.embed_passage(chunks)
 
-    # ── 1. Parse PDF ───────────────────────────────────────────────────────────
-    print("\n[1/4] 📖  Parsing PDF...")
-    parser = make_pdf_parser_service()
-    raw_text = parser.parse_pdf(pdf_path)
-    print(f"      ✅  Extracted {len(raw_text):,} characters from '{os.path.basename(pdf_path)}'")
+        self.vector_store.store(
+            collection_name = self.name,
+            chunks=chunks,
+            embeddings=embeddings,
+            doc_id=self.name
+        )
 
-    # ── 2. Chunk Text ──────────────────────────────────────────────────────────
-    print("\n[2/4] ✂️   Chunking text...")
-    chunker = TextChunker()
-    chunks = chunker.chunk_text(raw_text)
-    print(f"      ✅  Created {len(chunks)} chunks ")
-
-    # ── 3. Embed Chunks ────────────────────────────────────────────────────────
-    print("\n[3/4] 🧠  Generating Cohere embeddings...")
-    embedder = make_cohere_embeddings_service()
-    embeddings = embedder.embed_passage(chunks)          # returns list[list[float]]
-    print(f"      ✅  Generated {len(embeddings)} embeddings  "
-          f"(dim={len(embeddings[0])})")
-
-    # ── 4. Store in ChromaDB ───────────────────────────────────────────────────
-    print("\n[4/4] 🗄️   Storing in ChromaDB...")
-    chroma = make_chromadb_service()
-    chroma.store(
-        documents=chunks,
-        embeddings=embeddings,
-        ids=[f"chunk_{i}" for i in range(len(chunks))],
-    )
-    print(f"      ✅  Upserted {len(chunks)} documents into "
-          f"collection '{'rag_document'}'")
-
-    # # ── Query / Retrieval ──────────────────────────────────────────────────────
-    # print("\n" + "─" * 60)
-    # print(f"🔎  Running query: \"{query}\"")
-    # print("─" * 60)
-
-    # query_embedding = embedder.embed([query])[0]     # embed the user query
-    # results = chroma.query(
-    #     query_embeddings=[query_embedding],
-    #     n_results=3,                                 # top-3 relevant chunks
-    # )
-
-    # print("\n📌  Top relevant chunks:\n")
-    # documents = results.get("documents", [[]])[0]
-    # distances = results.get("distances", [[]])[0]
-
-    # if not documents:
-    #     print("   No results found.")
-    # else:
-    #     for rank, (doc, dist) in enumerate(zip(documents, distances), start=1):
-    #         print(f"  [{rank}] (distance: {dist:.4f})")
-    #         print(f"       {doc[:300].strip()}{'...' if len(doc) > 300 else ''}")
-    #         print()
+        print(f"✅ {self.name} completed")
 
 
-# ── Entry point ────────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    print("=" * 60)
-    print("       RAG Pipeline — PDF Upload & Query")
-    print("=" * 60)
 
-    try:
-        pdf_path = prompt_for_pdf()
-        run_pipeline(pdf_path)
 
-    except KeyboardInterrupt:
-        print("\n\n👋  Interrupted by user. Exiting.")
-        sys.exit(0)
-
-    except Exception as e:
-        print(f"\n❌  Pipeline error: {e}")
-        raise

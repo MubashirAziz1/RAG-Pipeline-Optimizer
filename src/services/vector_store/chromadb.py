@@ -1,3 +1,4 @@
+from typing import Dict
 import chromadb
 from chromadb.config import Settings
 from typing import Optional
@@ -26,46 +27,43 @@ class ChromadbStore:
             logger.info(f"ChromaDB initialized at: {self.persist_directory}")
 
         self.client = ChromadbStore._instance
-        self._collections: dict = {}
+        self._collections: Dict[str, chromadb.Collection] = {}
+    
+    def create_collection(self, pipeline_id: str) -> chromadb.Collection:
 
-    def get_or_create_collection(self, pipeline_id: str) -> chromadb.Collection:
-
-        collection_key = f"{pipeline_id}"
-
-        if collection_key in self._collections:
-            return self._collections[collection_key]
-
+        collection_name = f"{pipeline_id}"
         collection = self.client.get_or_create_collection(
-            name=collection_key,
+            name=collection_name,
             metadata={
                 "hnsw:space": "cosine", 
-                "pipeline_id": pipeline_id
-            }
-        )
+                "pipeline_id": collection_name
+            })
 
-        self._collections[collection_key] = collection
-        logger.info(f"Collection ready: {collection_key} | docs: {collection.count()}")
+        self._collections[collection_name] = collection
+        print(f"Collection ready: {collection_name} | docs: {collection.count()}")
+        # logger.info(f"Collection ready: {collection_name} | docs: {collection.count()}")
         return collection
 
-    def store(self, pipeline_id: str, embeddings: list[list[float]], chunks: list[str], doc_id: str) -> int:
+    def store(self, collection_name: str, embeddings: list[list[float]], chunks: list[str], doc_id: str) -> int:
 
         if not embeddings or not chunks:
-            logger.warning(f"Empty embeddings or chunks for {pipeline_id}")
+            print(f"Empty embeddings or chunks for {collection_name}")
+           # logger.warning(f"Empty embeddings or chunks for {pipeline_id}")
             return 0
 
         if len(embeddings) != len(chunks):
             raise ValueError(f"Embeddings ({len(embeddings)}) must match chunks ({len(chunks)})")
 
-        collection_key = f"{pipeline_id}"
-        collection = self._collections.get(collection_key)
+        collection = self._collections.get(collection_name)
 
         if not collection:
-            raise ValueError(f"Collection '{collection_key}' not initialized. Call get_or_create_collection() first.")
+            raise ValueError(f"Collection '{collection_name}' not initialized. Call get_or_create_collection() first.")
 
         ids = [f"{doc_id}_chunk_{i}" for i in range(len(chunks))]
         collection.add(embeddings=embeddings, documents=chunks, ids=ids)
 
-        logger.info(f"Stored {len(chunks)} chunks → {collection_key}")
+        print(f"Stored {len(chunks)} chunks → {collection_name}")
+        #logger.info(f"Stored {len(chunks)} chunks → {collection_name}")
         return len(chunks)
 
     # def query(
